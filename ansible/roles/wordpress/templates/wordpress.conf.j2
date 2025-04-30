@@ -1,0 +1,13 @@
+<VirtualHost *:80>
+    ServerAdmin admin@example.com
+    DocumentRoot /var/www/html/wordpress
+    ServerName 192.168.195.129
+
+    <Directory /var/www/html/wordpress/>
+        AllowOverride All
+    </Directory>
+
+    ErrorLog /var/log/httpd/error.log
+    CustomLog /var/log/httpd/access.log combined
+</VirtualHost>
+
