@@ -1,0 +1,10 @@
+- name: Install PHP
+  ansible.builtin.yum:
+    name:
+      - php
+      - php-mysqlnd
+      - php-gd
+      - php-json
+      - php-fpm
+      - php-xml
+    state: present
