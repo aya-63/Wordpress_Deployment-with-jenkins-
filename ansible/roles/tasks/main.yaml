@@ -1,0 +1,49 @@
+---
+- name: Install MariaDB
+  ansible.builtin.yum:
+    name: mariadb-server
+    state: present
+
+- name: Start MariaDB
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: Install pip3
+  ansible.builtin.yum:
+    name: python3-pip
+    state: present
+
+- name: Install PyMySQL
+  ansible.builtin.pip:
+    name: PyMySQL
+
+- name: Secure MariaDB installation
+  community.mysql.mysql_user:
+    name: root
+    password: '{{ db_root_pass }}'
+    login_user: '{{ db_login_user }}'
+    login_password: '{{ db_root_pass }}'
+    login_host: '{{ db_login_host }}'
+    login_unix_socket: "/var/lib/mysql/mysql.sock"
+
+- name: Create wordpress database
+  community.mysql.mysql_db:
+    name: wordpress
+    state: present
+    login_user: '{{ db_login_user }}'
+    login_password: '{{ db_root_pass }}'
+    login_host: '{{ db_login_host }}'
+    login_unix_socket: "/var/lib/mysql/mysql.sock"
+
+- name: Create Wordpress user
+  community.mysql.mysql_user:
+    name: '{{ db_wpuser }}'
+    password: '{{ db_wpuser_pass }}'
+    priv: "wordpress.*:ALL,GRANT"
+    state: present
+    login_user: '{{ db_login_user }}'
+    login_password: '{{ db_root_pass }}'
+    login_host: '{{ db_login_host }}'
+    login_unix_socket: "/var/lib/mysql/mysql.sock"
