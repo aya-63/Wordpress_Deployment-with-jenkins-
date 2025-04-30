@@ -1,0 +1,8 @@
+db_login_user: root
+db_login_host: localhost
+db_root_pass: rootpass
+db_wpuser: wpuser
+db_wpuser_pass: userpass
+db_name: wordpress
+db_host: localhost
+
