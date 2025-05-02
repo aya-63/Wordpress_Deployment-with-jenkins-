@@ -223,7 +223,7 @@ resource "aws_lb" "app_lb" {
   }
 }
 
-# --- Target Group for EC2 instances ---
+# --- Target Group ---
 resource "aws_lb_target_group" "tg" {
   name     = "wordpress-tg"
   port     = 80
@@ -241,7 +241,7 @@ resource "aws_lb_target_group" "tg" {
   }
 }
 
-# --- Listener for Load Balancer ---
+# --- Listener ---
 resource "aws_lb_listener" "listener" {
   load_balancer_arn = aws_lb.app_lb.arn
   port              = 80
@@ -255,7 +255,7 @@ resource "aws_lb_listener" "listener" {
 
 # --- EC2 Instances ---
 resource "aws_instance" "web_instance_1" {
-  ami                         = "ami-0c15e602d3d6c6c4a" # Amazon Linux 2 AMI
+  ami                         = "ami-0c15e602d3d6c6c4a"
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.private_subnet_1.id
   vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
@@ -280,7 +280,7 @@ resource "aws_instance" "web_instance_2" {
   }
 }
 
-# --- Attach instances to Target Group ---
+# --- Attach to Target Group ---
 resource "aws_lb_target_group_attachment" "tg_attachment_1" {
   target_group_arn = aws_lb_target_group.tg.arn
   target_id        = aws_instance.web_instance_1.id
@@ -293,12 +293,11 @@ resource "aws_lb_target_group_attachment" "tg_attachment_2" {
   port             = 80
 }
 
-# Get the default VPC
+# --- VPC Peering with Default VPC ---
 data "aws_vpc" "default" {
   default = true
 }
 
-# Get all subnets in the default VPC
 data "aws_subnets" "default_subnets" {
   filter {
     name   = "vpc-id"
@@ -306,30 +305,38 @@ data "aws_subnets" "default_subnets" {
   }
 }
 
-# Get the first public subnet manually
 data "aws_subnet" "default_public_subnet" {
   id = data.aws_subnets.default_subnets.ids[0]
 }
 
-
-
-# Create the VPC Peering Connection
 resource "aws_vpc_peering_connection" "peer" {
-  vpc_id        = aws_vpc.main_vpc.id
-  peer_vpc_id   = data.aws_vpc.default.id
-  auto_accept   = true
+  vpc_id      = aws_vpc.main_vpc.id
+  peer_vpc_id = data.aws_vpc.default.id
+  auto_accept = true
 
   tags = {
     Name = "main-to-default"
   }
 }
-# Add Routes for Custom VPC (private subnets) to default VPC
+
+# --- Routes for Peering ---
 resource "aws_route" "private_to_default_peer_1" {
-  route_table_id         = aws_route_table.private_rt.id
-  destination_cidr_block = data.aws_vpc.default.cidr_block
+  route_table_id            = aws_route_table.private_rt.id
+  destination_cidr_block    = data.aws_vpc.default.cidr_block
   vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
 }
-# Get the default route tables for the default VPC:
+
+resource "aws_route_table_association" "private_subnet_1" {
+  subnet_id      = aws_subnet.private_subnet_1.id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+resource "aws_route_table_association" "private_subnet_2" {
+  subnet_id      = aws_subnet.private_subnet_2.id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+# --- Route Back to Main VPC from Default VPC ---
 data "aws_route_tables" "default_vpc_rts" {
   filter {
     name   = "vpc-id"
@@ -337,12 +344,8 @@ data "aws_route_tables" "default_vpc_rts" {
   }
 }
 
-# Add Routes in Default VPC to reach Custom VPC
-# Create a route table if not found or update existing one
 resource "aws_route" "default_to_main_peer" {
-  route_table_id         = data.aws_route_tables.default_vpc_rts.ids[0]
-  destination_cidr_block = aws_vpc.main_vpc.cidr_block
+  route_table_id            = data.aws_route_tables.default_vpc_rts.ids[0]
+  destination_cidr_block    = aws_vpc.main_vpc.cidr_block
   vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
 }
-
-
