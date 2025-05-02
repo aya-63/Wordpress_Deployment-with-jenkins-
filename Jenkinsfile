@@ -51,6 +51,34 @@ pipeline {
                 }
             }
         }
+	stage('Run Ansible Playbook') {
+            steps {
+                dir('wordpress_ansible') {
+                    withCredentials([
+                        sshUserPrivateKey(
+                            credentialsId: 'ansible-key',
+                            keyFileVariable: 'SSH_KEY_FILE',
+                            usernameVariable: 'SSH_USER'
+                        )
+                    ]) {
+                        script {
+                            def ips = readJSON file: 'hosts.json'
+                            def inventory = "[ec2]\n"
+                            for (ip in ips) {
+                                inventory += "${ip} ansible_user=${env.SSH_USER} ansible_ssh_private_key_file=${env.SSH_KEY_FILE}\n"
+                            }
+                            writeFile file: 'inventory.ini', text: inventory
+                        }
+
+                        sh '''
+                            export ANSIBLE_HOST_KEY_CHECKING=False
+                            export LD_LIBRARY_PATH=/usr/lib64
+                            ansible-playbook -i inventory.ini mywebsite.yaml
+                        '''
+                    }
+                }
+            }
+        }
 
     }
 }
