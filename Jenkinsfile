@@ -20,9 +20,8 @@ pipeline {
                 }
             }
         }
-    } 
-    
-    stage('Terraform Plan & Apply') {
+
+        stage('Terraform Plan & Apply') {
             steps {
                 withCredentials([
                     string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
@@ -40,5 +39,19 @@ pipeline {
                     }
                 }
             }
-        }   
-}    
+        }
+
+        stage('Get Terraform Outputs') {
+            steps {
+                dir('terraform') {
+                    script {
+                        def output = sh(script: 'terraform output -json instance_private_ips', returnStdout: true).trim()
+                        writeFile file: '../wordpress_ansible/hosts.json', text: output
+                    }
+                }
+            }
+        }
+
+    }
+}
+
